@@ -5,7 +5,6 @@ import EditorCodeLine from "../components/EditorCodeLine";
 
 import { TAB_LENGTH, TAB_CHARACTER } from './EditorSettings'
 
-
 const BACKSPACE_KEY = 8;
 const TAB_KEY = 9;
 const ENTER_KEY = 13;
@@ -37,26 +36,27 @@ export const useMontonicCounter = () => {
 	return getNextNumber
 }
 
-export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosition, lineContainer, nextCounterNumber, verticalInfoStorage) => {
-	if (e.ctrlKey || e.altKey)
-		return handleKeyboardShortcuts(e, caretPosition, setLineContainers, setCaretPosition, lineContainer, nextCounterNumber)
+export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosition,
+	lineContainer, nextCounterNumber, verticalInfoStorage, keyboardShortcuts) => {
+	const keyCode = e.keyCode;
+	const char = e.key;
+	const isChar = char.length === 1
+	if ((e.ctrlKey || e.altKey) && isChar)
+		return handleKeyboardShortcuts(e, caretPosition, setLineContainers, setCaretPosition, lineContainer, nextCounterNumber, keyboardShortcuts)
 
 	const { VerticalTraversalMode, VerticalTraversalIndex } = verticalInfoStorage;
-
-	const char = e.key;
-	const keyCode = e.keyCode;
 	const lineIndex = caretPosition.lineNumber - 1;
 	const caretIndex = caretPosition.index;
 	let lineText = lineContainer[lineIndex].props.content || "";
 	const lineKey = lineContainer[lineIndex].props.keyIndex;
 
-	if (char.length == 1) {
+	if (isChar) {
 		if (keyCode === SPACE_KEY)
 			e.preventDefault();
 
 		lineText = lineText.slice(0, caretIndex) + char + lineText.slice(caretIndex,)
 		const lineContainerCopy = lineContainer
-		lineContainerCopy[lineIndex] = <EditorCodeLine content={lineText} key={lineKey} keyIndex={lineKey}/>
+		lineContainerCopy[lineIndex] = <EditorCodeLine content={lineText} key={lineKey} keyIndex={lineKey} />
 		setLineContainers(lineContainerCopy);
 		setCaretPosition({ 'lineNumber': lineIndex + 1, 'index': caretIndex + 1 })
 		VerticalTraversalMode.current = false;
@@ -71,8 +71,8 @@ export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosit
 			lineIndex,
 			1,
 			<EditorCodeLine content={lineText} key={lineKey} keyIndex={lineKey} isActive={false} />,
-			<EditorCodeLine content={newLineText} key={keyIndex} keyIndex={keyIndex}/>)
-		
+			<EditorCodeLine content={newLineText} key={keyIndex} keyIndex={keyIndex} />)
+
 		setLineContainers(lineContainerCopy);
 		setCaretPosition({ 'lineNumber': lineIndex + 2, 'index': 0 });
 		VerticalTraversalMode.current = false;
@@ -104,7 +104,7 @@ export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosit
 
 			const sliceEndIndex = isTabCharacter ? caretIndex - TAB_LENGTH : caretIndex - 1;
 
-			lineContainerCopy.splice(lineIndex, 1, <EditorCodeLine content={leftText.slice(0, sliceEndIndex) + rightText} key={lineKey} keyIndex={lineKey}/>)
+			lineContainerCopy.splice(lineIndex, 1, <EditorCodeLine content={leftText.slice(0, sliceEndIndex) + rightText} key={lineKey} keyIndex={lineKey} />)
 			setLineContainers(lineContainerCopy)
 			setCaretPosition({ 'lineNumber': lineIndex + 1, 'index': sliceEndIndex });
 		}
@@ -115,7 +115,7 @@ export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosit
 			const previousLineText = lineContainer[lineIndex - 1].props.content || "";
 			const newText = previousLineText + rightText;
 			lineContainerCopy.splice(lineIndex - 1, 2,
-				<EditorCodeLine content={newText} key={lineKey} keyIndex={lineKey}/>)
+				<EditorCodeLine content={newText} key={lineKey} keyIndex={lineKey} />)
 			setLineContainers(lineContainerCopy)
 			setCaretPosition({ 'lineNumber': lineIndex, 'index': previousLineText.length });
 		}
@@ -128,7 +128,7 @@ export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosit
 		const rightText = lineText.slice(caretIndex);
 		const lineContainerCopy = lineContainer;
 		lineContainerCopy.splice(lineIndex, 1,
-			<EditorCodeLine content={leftText + TAB_CHARACTER + rightText} key={lineKey} keyIndex={lineKey}/>
+			<EditorCodeLine content={leftText + TAB_CHARACTER + rightText} key={lineKey} keyIndex={lineKey} />
 		)
 		setLineContainers(lineContainerCopy)
 		setCaretPosition({ 'lineNumber': lineIndex + 1, 'index': caretIndex + TAB_LENGTH });
@@ -220,8 +220,13 @@ export const handleKeyDown = (e, caretPosition, setLineContainers, setCaretPosit
 	}
 }
 
-const handleKeyboardShortcuts = (e) => {
-
+const handleKeyboardShortcuts = (e, caretPosition, setLineContainers, setCaretPosition,
+	lineContainer, nextCounterNumber, keyboardShortcuts) => {
+	//e.preventDefault();
+	const shortcut_code = ((e.altKey) ? 'a' : '' + (e.ctrlKey) ? 'c' : '' + (e.shiftKey) ? 's' : '') + '_' + e.key;
+	const shortcut = keyboardShortcuts[shortcut_code];
+	if (shortcut)
+		shortcut.func()
 }
 
 export default handleKeyDown

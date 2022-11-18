@@ -1,34 +1,84 @@
-import React, { useState, useEffect,useLayoutEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
+import {useDispatch, useSelector} from "react-redux"
 
 import EditorCodeLine from "./EditorCodeLine";
 
-import { useVerticalStorage, handleKeyDown, useMontonicCounter } from "../core/KeyboardEventHandler";
+import {useIsMounting} from '../../../core/common'
+import { useVerticalStorage, handleKeyDown, useMontonicCounter} from "../core/KeyboardEventHandler";
+import { registerKeyboardShortcut } from "../../../core/common";
+import { EDITOR_SHORTCUTS } from "../core/Shortcuts";
 import { TAB_LENGTH, TAB_CHARACTER } from "../core/EditorSettings";
+import { SYSTEM_COMPONENT_LIST } from "../../../core/utils";
 
 const TextEditor = (props) => {
+    // Refs
+    const previousCaretPosition = useRef({ 'lineNumber': 1, 'index': 0 });
+    const activeLineRef = useRef();
+    const caretRef = useRef();
+    const _lineContainers = useRef([<EditorCodeLine key={0} keyIndex={0} />])
+    const digitCount = useRef(1);
+    
+    // Constants
+    const compName = SYSTEM_COMPONENT_LIST.EDITOR;
+    const lineContainer = _lineContainers.current;
+
+    // Selectors
+    const keyboardShortcuts = useSelector(state => state.editor.keyboardShortcuts);
+    // States
     const [lineCounterVisible, setLineCounterVisible] = useState(true);
     const [lineCount, setLineCount] = useState(1);
     const [caretCharacter, setCaretCharacter] = useState('\u258C');
-    const [caretClassName, setCaretClassName] = useState('term-caret')
-
-    const previousCaretPosition = useRef({ 'lineNumber': 1, 'index': 0 });
-    const nextCounterNumber = useMontonicCounter();
-
-    const [lineCounter, setLineCounter] = useState([<div className="counter-line active" key={1}>1</div>]);
-    const _lineContainers = useRef([<EditorCodeLine key={0} keyIndex={0}/>])
+    const [caretClassName, setCaretClassName] = useState('term-caret');
     const [caretPosition, setCaretPosition] = useState(previousCaretPosition.current);
     const [editorOffsetTop, setEditorOffsetTop] = useState(0);
-    const [editorOffsetLeft, setEditorOffsetLeft] = useState(0);
-    const lineContainer = _lineContainers.current;
+    const [editorOffsetLeft, setEditorOffsetLeft] = useState(0)
+    const [lineCounter, setLineCounter] = useState([<div className="counter-line active" key={1}>1</div>]);
 
-    const setLineContainers = (value) => {
-        _lineContainers.current = value;
-        udpateLineCount();
-    }
-    const activeLineRef = useRef();
-    const caretRef = useRef();
+    // Custom keyboardShortcuts
+    const isFirstMount = useIsMounting();
+    const nextCounterNumber = useMontonicCounter();
     const verticalInfoStorage = useVerticalStorage();
 
+    const dispatch = useDispatch();
+
+    // Component Mount
+    useEffect(() => {
+        if (isFirstMount){
+            registerKeyboardShortcut(EDITOR_SHORTCUTS, keyboardShortcuts, compName, dispatch, false);
+        }
+
+        const lineStyle = {
+            fontSize: `${props.fontSize}px`,
+            fontFamily: props.fontFamily,
+            padding: `${props.linePadding}px`,
+            lineHeight: `${props.fontSize}px`,
+            minHeight: `${props.fontSize + 2 * props.linePadding + 2 * props.highlightBorderSize}px`,
+            border: `${props.highlightBorderSize}px solid transparent`,
+            boxSizing: 'border-box',
+        }
+
+        const lineHighlightStyle = {
+            border: `${props.highlightBorderSize}px solid ${props.highlightBorderColor}`,
+        }
+
+        const counterLineStyle = {
+            width: '100%',
+            fontSize: `${props.fontSize}px`,
+            fontFamily: props.fontFamily,
+            padding: `${props.linePadding + props.highlightBorderSize}px`,
+            lineHeight: `${props.fontSize}px`,
+            minHeight: `${props.fontSize}px`,
+        }
+
+        updateCSSRule('.editor-line', lineStyle);
+        updateCSSRule('.editor-line.active', lineHighlightStyle);
+        updateCSSRule('.counter-line', counterLineStyle);
+        setEditorOffsetTop(document.getElementsByClassName('input-area')[0].offsetParent.offsetTop);
+        setEditorOffsetLeft(document.getElementsByClassName('input-area')[0].offsetLeft);
+
+    }, [])
+
+    // Caret Position Changed
     useLayoutEffect(() => {
         if (previousCaretPosition && previousCaretPosition.current.lineNumber !== caretPosition.lineNumber) {
             const inputLineHeight = props.fontSize + props.linePadding * 2 + 2 * props.highlightBorderSize;
@@ -53,43 +103,17 @@ const TextEditor = (props) => {
 
     }, [caretPosition])
 
-    useEffect(() => {
-
-        const lineStyle = {
-            fontSize: `${props.fontSize}px`,
-            fontFamily: props.fontFamily,
-            padding: `${props.linePadding}px`,
-            lineHeight: `${props.fontSize}px`,
-            minHeight: `${props.fontSize + 2* props.linePadding + 2* props.highlightBorderSize}px`,
-            border: `${props.highlightBorderSize}px solid transparent`,
-            boxSizing: 'border-box',
-        }
-
-        const lineHighlightStyle = {
-            border: `${props.highlightBorderSize}px solid ${props.highlightBorderColor}`,
-        }
-
-        const counterLineStyle = {
-            width: '100%',
-            fontSize: `${props.fontSize}px`,
-            fontFamily: props.fontFamily,
-            padding: `${props.linePadding + props.highlightBorderSize}px`,
-            lineHeight: `${props.fontSize}px`,
-            minHeight: `${props.fontSize}px`,
-        }
-
-        updateCSSRule('.editor-line', lineStyle);
-        updateCSSRule('.editor-line.active', lineHighlightStyle);
-        updateCSSRule('.counter-line', counterLineStyle);
-
-        setEditorOffsetTop(document.getElementsByClassName('input-area')[0].offsetParent.offsetTop);
-        setEditorOffsetLeft(document.getElementsByClassName('input-area')[0].offsetLeft);
-    }, [])
-
+    // Line visiblityChanged
+    // :: TO_DO :: REMOVE THIS ONCE THE EDITOR IS IN SYNC WITH SETTINGS
     useEffect(() => {
         udpateLineCount()
     }, [lineCounterVisible])
 
+
+    const setLineContainers = (value) => {
+        _lineContainers.current = value;
+        udpateLineCount();
+    }
     const udpateLineCount = () => {
         // Tracks total line count for the file and renders lineNumber in the left panel
         const currentLineCount = _lineContainers.current.length;
@@ -102,7 +126,13 @@ const TextEditor = (props) => {
         } else {
             lineCounterCopy.pop()
         }
-        if (currentLineCount % 100)
+
+        // Recalculate LeftOffset when line-counter width increases.
+        if (digitCount.current !== (currentLineCount + "").length) {
+            digitCount.current = (lineCount + "").length;
+            setEditorOffsetLeft(document.getElementsByClassName('input-area')[0].offsetLeft);
+        }
+
         setLineCounter(lineCounterCopy);
         setLineCount(currentLineCount);
     }
@@ -194,9 +224,19 @@ const TextEditor = (props) => {
 
 
     return (
-        <div className='code-area' onKeyDown={(e) => { handleKeyDown(e, caretPosition, setLineContainers, setCaretPosition, lineContainer, nextCounterNumber, verticalInfoStorage) }} tabIndex={0}>
+        <div className='code-area' onKeyDown={(e) => {
+            handleKeyDown(e,
+                caretPosition,
+                setLineContainers,
+                setCaretPosition,
+                lineContainer,
+                nextCounterNumber,
+                verticalInfoStorage,
+                keyboardShortcuts)
+
+        }} tabIndex={0}>
             {lineCounterVisible &&
-                <div className="code-line-counter" on>
+                <div className="code-line-counter">
                     {lineCounter}
                 </div>
             }
@@ -219,8 +259,6 @@ const TextEditor = (props) => {
                     <span ref={caretRef}>{caretCharacter}</span>
                 </div>
             </div>
-
-
         </div>
     )
 }

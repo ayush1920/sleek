@@ -38,10 +38,12 @@ code {
 .code-theme-dropdown {
   position: relative;
 }
+
 .code-theme-droprown-value {
   padding: 5px 8px;
   border-radius: 3.2px;
 }
+
 .code-theme-droprown-value:hover {
   background-color: green;
 }
@@ -162,7 +164,7 @@ code {
   white-space: pre-wrap;
   flex-direction: row;
   position: absolute;
-  color: red;
+  color: transparent;
 }
 
 .counter-line {
